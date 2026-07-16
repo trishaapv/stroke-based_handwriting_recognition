@@ -1,0 +1,211 @@
+TECHNICAL RESEARCH SUMMARY
+Explainable Handwritten Character Recognition Using a Point-Sequence Transformer
+
+1. PROJECT OBJECTIVE
+
+This project builds an explainable handwritten character recognition system using the UJI Pen Characters dataset. The final goal is to classify handwritten characters and explain which pen strokes contribute most to the prediction.
+
+The final system combines:
+
+- Raw pen-point sequence modeling
+- A point-sequence Transformer classifier
+- Shapley-style stroke attribution
+- Stroke-removal validation
+- A Streamlit dashboard for interactive interpretation
+
+The central research question is:
+
+How can a Transformer classify handwritten characters from pen trajectories while explaining the contribution of individual strokes?
+
+
+2. DATASET
+
+The project uses the UJI Pen Characters dataset.
+
+Dataset summary:
+
+- Total samples: 1,364
+- Total classes: 62
+- Samples per class: 22
+- Classes include digits, uppercase letters, and lowercase letters
+
+Stroke-count distribution:
+
+- 1-stroke samples: 925
+- 2-stroke samples: 388
+- 3-stroke samples: 51
+
+
+3. FINAL INPUT REPRESENTATION
+
+The final model does not use only the old 3 x 15 stroke-summary matrix. Instead, it uses raw handwriting points.
+
+Each character is converted into a fixed-length sequence of 96 points. Each point has five features:
+
+- x coordinate
+- y coordinate
+- dx movement from previous point
+- dy movement from previous point
+- pen_flag indicating pen continuation / stroke boundary information
+
+This representation preserves more handwriting shape than a small set of stroke summary statistics.
+
+
+4. POINT-SEQUENCE TRANSFORMER MODEL
+
+Final model file:
+
+    scripts/point_sequence_transformer.py
+
+Final training script:
+
+    train_point_transformer.py
+
+Final checkpoint:
+
+    best_point_model.pt
+
+Architecture:
+
+- Input dimension: 5
+- Sequence length: 96 points
+- Embedding dimension: 128
+- Transformer encoder layers: 4
+- Attention heads: 8
+- Feed-forward dimension: 512
+- Dropout: 0.20
+- Classification: learned CLS token
+- Output classes: 62
+
+The point Transformer keeps local curve and trajectory information that was lost in the earlier stroke-summary model.
+
+
+5. TRAINING SETUP
+
+Training details:
+
+- Optimizer: AdamW
+- Learning rate: 2e-4
+- Weight decay: 1e-2
+- Batch size: 64
+- Maximum epochs: 350
+- Early stopping patience: 45
+- Label smoothing: 0.05
+- Gradient clipping: max norm 1.0
+- Train/validation/test split: 70/15/15
+- Training augmentation repeats: 5
+
+Augmentation includes small rotation, scaling, shifting, and noise.
+
+
+6. WHY THE POINT MODEL BECAME FINAL
+
+An earlier model used a 3 x 15 stroke-summary representation. That helped establish the pipeline, but it compressed each stroke heavily. Important curve and local motion information was lost.
+
+The point-sequence Transformer uses a richer input representation by preserving the handwriting trajectory. This makes it the better final model for the research article.
+
+
+7. SHAPLEY EXPLANATION FOR THE POINT MODEL
+
+For the point model, Shapley analysis treats each original stroke as a player.
+
+For each coalition of strokes:
+
+1. Keep only the selected raw strokes.
+2. Resample the remaining handwriting into a 96-point sequence.
+3. Run the point Transformer.
+4. Use the target-class probability as the payoff.
+5. Compute each stroke contribution from marginal gains over all coalitions.
+
+Because each character has at most three strokes, exact Shapley computation is feasible.
+
+The empty coalition is represented by a zero 96-point sequence as a no-handwriting baseline.
+
+
+8. ANALYSIS PIPELINE
+
+Run scripts in this order:
+
+1. shapley_dataset.py
+2. analyse_shapley.py
+3. character_cooperation.py
+4. character_synergy.py
+5. character_profiles.py
+6. character_removal_analysis.py
+7. stroke_removal_validation.py
+8. character_taxonomy.py
+
+The point-model Shapley pipeline rebuilds the same raw-sample train/validation/test split used by train_point_transformer.py.
+
+
+9. STROKE REMOVAL VALIDATION
+
+Stroke-removal validation checks whether explanation scores are meaningful.
+
+If a stroke has high Shapley contribution, removing that raw stroke should usually reduce confidence or change the predicted character.
+
+The validation process:
+
+1. Predict the original character.
+2. Identify high-contribution and low-contribution strokes.
+3. Remove each raw stroke separately.
+4. Resample the remaining strokes to 96 points.
+5. Re-run the point Transformer.
+6. Compare confidence drops and prediction changes.
+
+
+10. DASHBOARD
+
+Final dashboard file:
+
+    app_demo2.py
+
+Dashboard pages:
+
+- Project Overview
+- Character Explorer
+- Feature View
+- Point Transformer Prediction
+- Stroke Importance
+- Stroke Removal Lab
+- Research Interpretation
+- Future Scope
+
+The dashboard still displays stroke-summary features for interpretability, but predictions use the raw parsed stroke sample and the point-sequence Transformer.
+
+
+11. RESEARCH ARTICLE FRAMING
+
+Possible title:
+
+Explainable Handwritten Character Recognition Using a Point-Sequence Transformer and Game-Theoretic Stroke Attribution
+
+Possible abstract:
+
+This work presents an explainable handwritten character recognition system using the UJI Pen Characters dataset. Each character is represented as a fixed-length sequence of resampled pen points with coordinate, movement, and pen-state features. A point-sequence Transformer is trained to classify 62 handwritten character classes. To interpret model decisions, exact Shapley values are computed over original pen-stroke coalitions, producing stroke-level contribution scores. These explanations are validated through stroke-removal experiments and summarized into character-level cooperation, dominance, synergy, and interference categories. An interactive Streamlit dashboard presents character visualizations, predictions, confidence scores, stroke attributions, and removal-based validation.
+
+Possible contributions:
+
+1. A point-sequence Transformer for online handwritten character recognition.
+2. A fixed-length 96-point representation preserving pen trajectory information.
+3. Exact Shapley attribution over pen-stroke coalitions.
+4. Stroke-removal validation for explanation faithfulness.
+5. Character-level behavior taxonomy based on stroke cooperation and dominance.
+6. An interactive dashboard for explainable handwriting recognition.
+
+
+12. LIMITATIONS
+
+- Only 22 samples per class.
+- Exact Shapley is feasible because characters have at most three strokes.
+- The system handles isolated characters, not full words.
+- Similar-looking characters may still be confused.
+
+
+13. FUTURE WORK
+
+- Extend from isolated characters to word-level handwriting recognition.
+- Add attention visualization.
+- Evaluate explanation faithfulness with deletion/insertion metrics.
+- Add real-time handwriting input.
+- Train on larger handwriting datasets.

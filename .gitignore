@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+
+# Duplicate generated arrays/checkpoints inside scripts; canonical copies are in processed/ and project root.
+scripts/*.npy
+scripts/*.pt
+scripts/__pycache__/scripts/*.csv
